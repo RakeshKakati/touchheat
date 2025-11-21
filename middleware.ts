@@ -2,16 +2,23 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  try {
+    let response = NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+    // Check if environment variables are available
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing Supabase environment variables');
+      return response;
+    }
+
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -28,12 +35,22 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
+    });
+
+    // Refresh session if needed (non-blocking)
+    try {
+      await supabase.auth.getUser();
+    } catch (error) {
+      // Silently fail - user might not be authenticated
+      console.error('Auth error in middleware:', error);
     }
-  );
 
-  await supabase.auth.getUser();
-
-  return response;
+    return response;
+  } catch (error) {
+    // If middleware fails, return a basic response to prevent blocking
+    console.error('Middleware error:', error);
+    return NextResponse.next();
+  }
 }
 
 export const config = {
