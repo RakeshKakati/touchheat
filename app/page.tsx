@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation';
 
+// Force dynamic rendering since we use cookies()
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   try {
     // Dynamically import to avoid Edge Runtime issues
