@@ -12,9 +12,10 @@ export const maxDuration = 10;
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -28,7 +29,7 @@ export async function POST(
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('id')
-      .eq('id', params.projectId)
+      .eq('id', projectId)
       .eq('user_id', user.id)
       .single();
 
@@ -47,7 +48,7 @@ export async function POST(
     // Create a test event
     const testUrl = validated.url || 'https://test.touchheat.app/test-page';
     const testEvent = {
-      project_id: params.projectId,
+      project_id: projectId,
       x: 200,
       y: 400,
       viewport_w: 375,
@@ -61,7 +62,7 @@ export async function POST(
 
     const { data: insertedEvent, error: insertError } = await adminSupabase
       .from('touch_events')
-      .insert(testEvent)
+      .insert(testEvent as any)
       .select()
       .single();
 

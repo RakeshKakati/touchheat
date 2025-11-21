@@ -137,11 +137,12 @@
     }
   }
 
-  function handleTouch(e: TouchEvent | MouseEvent) {
-    const target = e.target as Element;
-    const touch = 'touches' in e ? e.touches[0] : null;
-    const clientX = touch ? touch.clientX : e.clientX;
-    const clientY = touch ? touch.clientY : e.clientY;
+  function handleTouch(e: Event) {
+    const target = (e as any).target as Element;
+    const eventAny = e as any;
+    const touch = 'touches' in eventAny ? eventAny.touches[0] : null;
+    const clientX = touch ? touch.clientX : eventAny.clientX;
+    const clientY = touch ? touch.clientY : eventAny.clientY;
     const pressure = touch && 'force' in touch ? (touch as any).force : null;
     
     const selector = getSelector(target);

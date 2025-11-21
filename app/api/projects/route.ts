@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         name: validated.name,
         user_id: user.id,
         api_key: apiKey,
-      })
+      } as any)
       .select()
       .single();
 

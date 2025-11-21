@@ -63,11 +63,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ insights: [] });
     }
 
+    type EventData = {
+      mis_tap: boolean;
+      thumb_zone: 'left' | 'right' | 'center' | 'unknown';
+      selector: string | null;
+      url: string;
+      viewport_w: number;
+      viewport_h: number;
+      x: number;
+      y: number;
+    };
+    const validEvents = events as EventData[];
+
     const insights: Insight[] = [];
 
     // 1. Mis-Tap Rate
-    const misTapCount = events.filter((e) => e.mis_tap).length;
-    const misTapRate = events.length > 0 ? misTapCount / events.length : 0;
+    const misTapCount = validEvents.filter((e) => e.mis_tap).length;
+    const misTapRate = validEvents.length > 0 ? misTapCount / validEvents.length : 0;
     insights.push({
       type: 'mis_tap_rate',
       data: {
@@ -85,10 +97,10 @@ export async function GET(request: NextRequest) {
       center: 0,
       unknown: 0,
     };
-    events.forEach((e) => {
+    validEvents.forEach((e) => {
       zoneCounts[e.thumb_zone as keyof typeof zoneCounts]++;
     });
-    const totalZones = events.length;
+    const totalZones = validEvents.length;
     insights.push({
       type: 'thumb_zone_distribution',
       data: {
@@ -103,7 +115,7 @@ export async function GET(request: NextRequest) {
     const selectorCounts = new Map<string, number>();
     const selectorViewports = new Map<string, Set<string>>();
 
-    events.forEach((e) => {
+    validEvents.forEach((e) => {
       if (e.selector) {
         selectorCounts.set(
           e.selector,
@@ -117,7 +129,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const totalTaps = events.length;
+    const totalTaps = validEvents.length;
     const unreachableCTAs: Array<{ selector: string; tapRate: number }> = [];
 
     selectorCounts.forEach((count, selector) => {
@@ -144,7 +156,7 @@ export async function GET(request: NextRequest) {
       { events: number; avgDistance: number; viewportW: number; viewportH: number }
     >();
 
-    events.forEach((e) => {
+    validEvents.forEach((e) => {
       if (!pageStats.has(e.url)) {
         pageStats.set(e.url, {
           events: 0,

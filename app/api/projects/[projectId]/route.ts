@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { Database } from '@/lib/supabase/database.types';
 import { z } from 'zod';
 
 const updateProjectSchema = z.object({
@@ -9,9 +10,10 @@ const updateProjectSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -28,7 +30,7 @@ export async function PATCH(
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('id')
-      .eq('id', params.projectId)
+      .eq('id', projectId)
       .eq('user_id', user.id)
       .single();
 
@@ -40,7 +42,7 @@ export async function PATCH(
     }
 
     // Update project
-    const updateData: any = {};
+    const updateData: Partial<Database['public']['Tables']['projects']['Update']> = {};
     if (validated.name !== undefined) updateData.name = validated.name;
     if (validated.allowed_domains !== undefined) {
       // Normalize domains (remove protocol, trailing slashes, etc.)
@@ -61,10 +63,12 @@ export async function PATCH(
         .filter((domain) => domain.length > 0);
     }
 
-    const { data: updatedProject, error } = await supabase
+    // Use type assertion to work around Supabase type inference limitations
+    // Type assertion needed due to Supabase type inference limitations with partial updates
+    const { data: updatedProject, error } = await (supabase as any)
       .from('projects')
       .update(updateData)
-      .eq('id', params.projectId)
+      .eq('id', projectId)
       .select()
       .single();
 

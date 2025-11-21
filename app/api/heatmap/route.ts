@@ -69,7 +69,10 @@ export async function GET(request: NextRequest) {
     // Cluster events into 20px buckets
     const buckets = new Map<string, number>();
 
-    for (const event of events) {
+    type EventData = { x: number; y: number; viewport_w: number; viewport_h: number };
+    const validEvents = events as EventData[];
+
+    for (const event of validEvents) {
       const bucketX = Math.floor(event.x / BUCKET_SIZE) * BUCKET_SIZE;
       const bucketY = Math.floor(event.y / BUCKET_SIZE) * BUCKET_SIZE;
       const key = `${bucketX},${bucketY}`;

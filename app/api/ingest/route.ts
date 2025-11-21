@@ -36,7 +36,10 @@ export async function POST(request: NextRequest) {
       .eq('id', validated.project_id)
       .single();
 
-    if (projectError || !project) {
+    type ProjectData = { id: string; allowed_domains: string[] | null };
+    const projectData = project as ProjectData | null;
+
+    if (projectError || !projectData) {
       return NextResponse.json(
         { error: 'Invalid project_id' },
         { status: 401 }
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify domain if allowed_domains is configured
-    if (project.allowed_domains && project.allowed_domains.length > 0) {
+    if (projectData.allowed_domains && projectData.allowed_domains.length > 0) {
       // Extract domain from Origin header or from event URLs
       const origin = request.headers.get('origin');
       let requestDomain: string | null = null;
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if domain is allowed (exact match or subdomain)
-      const isAllowed = project.allowed_domains.some((allowedDomain) => {
+      const isAllowed = projectData.allowed_domains.some((allowedDomain) => {
         // Exact match
         if (requestDomain === allowedDomain) return true;
         // Subdomain match (e.g., www.example.com matches example.com)
@@ -108,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     const { error: insertError } = await supabase
       .from('touch_events')
-      .insert(events);
+      .insert(events as any);
 
     if (insertError) {
       console.error('Insert error:', insertError);
