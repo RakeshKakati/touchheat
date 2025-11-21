@@ -1,4 +1,3 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
@@ -14,41 +13,47 @@ export async function middleware(request: NextRequest) {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Missing Supabase environment variables');
+      // Missing env vars - just continue without auth refresh
       return response;
     }
 
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    });
-
-    // Refresh session if needed (non-blocking)
+    // Dynamically import Supabase to avoid Edge Runtime issues
     try {
-      await supabase.auth.getUser();
-    } catch (error) {
-      // Silently fail - user might not be authenticated
-      console.error('Auth error in middleware:', error);
+      const { createServerClient } = await import('@supabase/ssr');
+      
+      const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              request.cookies.set(name, value)
+            );
+            response = NextResponse.next({
+              request,
+            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
+        },
+      });
+
+      // Refresh session if needed (non-blocking)
+      try {
+        await supabase.auth.getUser();
+      } catch (error) {
+        // Silently fail - user might not be authenticated
+      }
+    } catch (importError) {
+      // If Supabase import fails, continue without auth refresh
+      // This prevents blocking the request
     }
 
     return response;
   } catch (error) {
     // If middleware fails, return a basic response to prevent blocking
-    console.error('Middleware error:', error);
     return NextResponse.next();
   }
 }
