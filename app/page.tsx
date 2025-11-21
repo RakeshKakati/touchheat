@@ -1,15 +1,22 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 
 export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    // Dynamically import to avoid Edge Runtime issues
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (user) {
-    redirect('/dashboard');
-  } else {
+    if (user) {
+      redirect('/dashboard');
+    } else {
+      redirect('/login');
+    }
+  } catch (error) {
+    // If Supabase fails, redirect to login
+    console.error('Error in root page:', error);
     redirect('/login');
   }
 }
